@@ -7,6 +7,7 @@
 Generate TypeScript and Dart types from OpenAPI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/vladislav-yemelyanov/tukan/actions/workflows/ci.yml/badge.svg)](https://github.com/vladislav-yemelyanov/tukan/actions/workflows/ci.yml)
 
 An API may be used by several applications—for example, a web app and a mobile app. Each application needs to understand the same request and response data, often in a different programming language. Keeping those definitions in sync by hand takes time and can lead to mismatches.
 
@@ -16,25 +17,31 @@ Tukan reads an OpenAPI specification—sometimes called a Swagger file—and gen
 
 ### Installation
 
-Until GitHub releases are published, distribute this repository's `install.sh` together with its prepared `dist/` directory. From that directory, install with one command:
+Install the latest release on **macOS or Linux** with one command:
 
 ```sh
-bash install.sh
+curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash
 ```
 
-The installer selects your operating system and CPU, verifies the SHA-256 checksum and embedded version, and installs `tukan` into `~/.local/bin` without `sudo`. It checks that the binary runs before replacing an existing installation. If necessary, follow the printed instruction to add the directory to your shell's `PATH`, then check:
+The installer selects your operating system and CPU, downloads the binary together with `VERSION` and `SHA256SUMS` from GitHub Releases, verifies the SHA-256 checksum and embedded version, and installs `tukan` into `~/.local/bin` without `sudo`. It checks that the binary runs before replacing an existing installation. If necessary, follow the printed instruction to add the directory to your shell's `PATH`, then check:
 
 ```sh
 tukan --version
 ```
 
-For another destination or a separate build directory:
+To pin a specific release version or choose a custom install directory:
+
+```sh
+curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash -s -- --version 0.3.0 --install-dir /path/to/bin
+```
+
+To install from a locally built `dist/` bundle instead of downloading from GitHub:
 
 ```sh
 bash install.sh --dist-dir /path/to/dist --install-dir /path/to/bin
 ```
 
-The project targets **macOS and Linux**. Builds have been tested on macOS ARM64 and Linux ARM64 and x86-64. Executables use the system libcurl library (preinstalled on macOS; install libcurl on Linux if missing).
+The project targets **macOS and Linux**. Builds target macOS ARM64 and Linux ARM64 and x86-64. Executables use the system libcurl library (preinstalled on macOS; install libcurl on Linux if missing).
 
 ### Set up your project
 

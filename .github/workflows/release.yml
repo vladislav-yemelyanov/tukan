@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  ODIN_VERSION: dev-2026-11
+  ODIN_LINUX_AMD64_SHA256: 65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618
+  ODIN_MACOS_ARM64_SHA256: fa10eee280c8786758e3ff0b8fdd9355e1c9447b1f0b8c72764e25ee4ebc3e22
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate release tag and VERSION
+        id: meta
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version="${TAG_NAME#v}"
+          number='(0|[1-9][0-9]*)'
+          prerelease='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+          if [[ "$TAG_NAME" != v* ]] || [[ ! "$version" =~ ^$number\.$number\.$number(-$prerelease(\.$prerelease)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Invalid release tag: $TAG_NAME. Expected vX.Y.Z." >&2
+            exit 1
+          fi
+
+          file_version="$(cat VERSION)"
+          if [[ "$file_version" != "$version" ]]; then
+            echo "VERSION ($file_version) does not match tag ($TAG_NAME)." >&2
+            exit 1
+          fi
+
+          version_no_build="${version%%+*}"
+          is_prerelease=false
+          if [[ "$version_no_build" == *-* ]]; then
+            is_prerelease=true
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$TAG_NAME"
+            echo "prerelease=$is_prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libcurl4-openssl-dev
+
+      - name: Install Odin compiler
+        run: |
+          curl -fsSL "https://github.com/odin-lang/Odin/releases/download/${ODIN_VERSION}/odin-linux-amd64-${ODIN_VERSION}.tar.gz" -o /tmp/odin.tar.gz
+          echo "${ODIN_LINUX_AMD64_SHA256}  /tmp/odin.tar.gz" | sha256sum -c -
+          sudo mkdir -p /opt/odin
+          sudo tar -xzf /tmp/odin.tar.gz -C /opt/odin --strip-components=1
+          rm -f /tmp/odin.tar.gz
+          echo "/opt/odin" >> "$GITHUB_PATH"
+
+      - name: Setup Node.js and TypeScript
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install TypeScript compiler
+        run: npm install -g typescript
+
+      - name: Setup Dart SDK
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Run full test suite
+        run: ./scripts/test.sh
+
+  build-macos:
+    needs: verify
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Odin compiler
+        run: |
+          curl -fsSL "https://github.com/odin-lang/Odin/releases/download/${ODIN_VERSION}/odin-macos-arm64-${ODIN_VERSION}.tar.gz" -o "$RUNNER_TEMP/odin.tar.gz"
+          echo "${ODIN_MACOS_ARM64_SHA256}  $RUNNER_TEMP/odin.tar.gz" | shasum -a 256 -c -
+          mkdir -p "$RUNNER_TEMP/odin"
+          tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin" --strip-components=1
+          rm -f "$RUNNER_TEMP/odin.tar.gz"
+          echo "$RUNNER_TEMP/odin" >> "$GITHUB_PATH"
+
+      - name: Build and test macOS ARM64 binary
+        env:
+          TUKAN_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          mkdir -p release-assets
+          odin build core -o:speed "-define:TUKAN_VERSION=$TUKAN_VERSION" -out:release-assets/tukan-macos-arm64
+          [[ "$(./release-assets/tukan-macos-arm64 --version)" == "Tukan $TUKAN_VERSION" ]]
+          export TUKAN_TEST_BINARY="$PWD/release-assets/tukan-macos-arm64"
+          odin test core/openapi
+          odin test core/parser/schemas
+          odin test core/parser
+          odin test core/generators
+          odin test core/diagnostics
+          odin test core/tests
+
+      - name: Upload macOS ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tukan-macos-arm64
+          path: release-assets/tukan-macos-arm64
+          if-no-files-found: error
+
+  build-linux:
+    needs: verify
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and test Linux binary in container
+        env:
+          TUKAN_VERSION: ${{ needs.verify.outputs.version }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          mkdir -p release-assets
+          docker build --load --platform "linux/$TARGET_ARCH" \
+            --build-arg "TUKAN_VERSION=$TUKAN_VERSION" \
+            --tag "tukan-build:$TARGET_ARCH" \
+            --file docker/Dockerfile.linux .
+          container="$(docker create --platform "linux/$TARGET_ARCH" "tukan-build:$TARGET_ARCH")"
+          docker cp "$container:/output/tukan" "release-assets/tukan-linux-$TARGET_ARCH"
+          docker rm "$container"
+          chmod 755 "release-assets/tukan-linux-$TARGET_ARCH"
+          [[ "$("./release-assets/tukan-linux-$TARGET_ARCH" --version)" == "Tukan $TUKAN_VERSION" ]]
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tukan-linux-${{ matrix.arch }}
+          path: release-assets/tukan-linux-${{ matrix.arch }}
+          if-no-files-found: error
+
+  publish:
+    needs: [verify, build-macos, build-linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: tukan-*
+          merge-multiple: true
+          path: release-dist
+
+      - name: Prepare release bundle and smoke-test installer
+        env:
+          TUKAN_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          chmod 755 release-dist/tukan-*
+          printf '%s\n' "$TUKAN_VERSION" > release-dist/VERSION
+          (cd release-dist && LC_ALL=C sha256sum tukan-linux-amd64 tukan-linux-arm64 tukan-macos-arm64 > SHA256SUMS)
+          cp install.sh release-dist/install.sh
+          chmod 755 release-dist/install.sh
+          bash release-dist/install.sh --dist-dir release-dist --install-dir "$RUNNER_TEMP/smoke-bin"
+          [[ "$("$RUNNER_TEMP/smoke-bin/tukan" --version)" == "Tukan $TUKAN_VERSION" ]]
+
+      - name: Publish GitHub Release
+        env:
+          TAG: ${{ needs.verify.outputs.tag }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(
+            release-dist/tukan-macos-arm64
+            release-dist/tukan-linux-arm64
+            release-dist/tukan-linux-amd64
+            release-dist/SHA256SUMS
+            release-dist/VERSION
+            release-dist/install.sh
+          )
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            extra_flags=()
+            if [[ "$PRERELEASE" == "true" ]]; then
+              extra_flags+=(--prerelease)
+            fi
+            gh release create "$TAG" "${assets[@]}" \
+              --title "Tukan $TAG" \
+              --generate-notes \
+              --verify-tag \
+              "${extra_flags[@]}"
+          fi

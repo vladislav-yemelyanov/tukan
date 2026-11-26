@@ -119,4 +119,71 @@ printf '#!/usr/bin/env bash\nexit 1\n' > "$work/repo/dist/tukan-macos-arm64"
 expect_failure bash "$work/repo/install.sh" --install-dir "$work/install dir"
 cmp "$work/installed-before" "$work/install dir/tukan"
 
+# Remote GitHub Releases download mode (including piped stdin execution).
+mkdir -p "$work/remote/latest" "$work/remote/v0.3.0" "$work/remote-install"
+printf '#!/usr/bin/env bash\nprintf "Tukan 0.3.0\\n"\n' > "$work/remote/latest/tukan-macos-arm64"
+printf '0.3.0\n' > "$work/remote/latest/VERSION"
+(cd "$work/remote/latest" && "${checksum_command[@]}" tukan-* > SHA256SUMS)
+cp "$work/remote/latest/"* "$work/remote/v0.3.0/"
+
+cat > "$work/tools/curl" <<STUB
+#!/usr/bin/env bash
+set -euo pipefail
+url=""
+out=""
+while [[ \$# -gt 0 ]]; do
+  case "\$1" in
+    -o) out="\$2"; shift 2 ;;
+    http://*|https://*) url="\$1"; shift ;;
+    *) shift ;;
+  esac
+done
+if [[ -n "\${TEST_CURL_LOG:-}" ]]; then
+  printf '%s\\n' "\$url" >> "\$TEST_CURL_LOG"
+fi
+case "\$url" in
+  https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/*)
+    file="\${url##*/}"
+    src="$work/remote/latest/\$file"
+    ;;
+  https://github.com/vladislav-yemelyanov/tukan/releases/download/v0.3.0/*)
+    file="\${url##*/}"
+    src="$work/remote/v0.3.0/\$file"
+    ;;
+  *)
+    exit 22
+    ;;
+esac
+[[ -f "\$src" ]] || exit 22
+cp "\$src" "\$out"
+STUB
+chmod +x "$work/tools/curl"
+
+bash -s -- --install-dir "$work/remote-install" < "$work/repo/install.sh" > /dev/null
+[[ "$("$work/remote-install/tukan" --version)" == 'Tukan 0.3.0' ]]
+cp "$work/remote-install/tukan" "$work/remote-before"
+
+# --version overrides local dist/ and accepts both 0.3.0 and v0.3.0.
+bash "$work/repo/install.sh" --version 0.3.0 --install-dir "$work/remote-install" > /dev/null
+[[ "$("$work/remote-install/tukan" --version)" == 'Tukan 0.3.0' ]]
+bash "$work/repo/install.sh" --version v0.3.0 --install-dir "$work/remote-install" > /dev/null
+[[ "$("$work/remote-install/tukan" --version)" == 'Tukan 0.3.0' ]]
+
+# Invalid versions and combining --dist-dir with --version must fail cleanly.
+expect_failure bash "$work/repo/install.sh" --version '../0.3.0' --install-dir "$work/remote-install"
+expect_failure bash "$work/repo/install.sh" --dist-dir "$work/repo/dist" --version 0.3.0 --install-dir "$work/remote-install"
+
+# Unsupported OS in remote mode must fail before invoking curl.
+TEST_CURL_LOG="$work/curl-unsupported.log" expect_failure env TEST_OS=FreeBSD bash -s -- --install-dir "$work/remote-install" < "$work/repo/install.sh"
+[[ ! -e "$work/curl-unsupported.log" ]]
+
+# Corrupted remote binary or mismatched VERSION must preserve the installed binary.
+printf '\ncorrupted\n' >> "$work/remote/latest/tukan-macos-arm64"
+expect_failure bash -s -- --install-dir "$work/remote-install" < "$work/repo/install.sh"
+cmp "$work/remote-before" "$work/remote-install/tukan"
+
+printf '0.2.9\n' > "$work/remote/v0.3.0/VERSION"
+expect_failure bash "$work/repo/install.sh" --version 0.3.0 --install-dir "$work/remote-install"
+cmp "$work/remote-before" "$work/remote-install/tukan"
+
 echo "Release and installation checks passed."
