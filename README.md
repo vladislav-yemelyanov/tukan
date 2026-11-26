@@ -4,67 +4,48 @@
 
 # Tukan
 
-Generate TypeScript and Dart types from OpenAPI.
+Fast OpenAPI 3.0 type generator and zero-dependency HTTP clients for **TypeScript** and **Dart**.
 
+[![Release](https://img.shields.io/github/v/release/vladislav-yemelyanov/tukan)](https://github.com/vladislav-yemelyanov/tukan/releases/latest)
+[![npm](https://img.shields.io/npm/v/tukan?label=npm)](https://www.npmjs.com/package/tukan)
+[![pub.dev](https://img.shields.io/pub/v/tukan?label=pub.dev)](https://pub.dev/packages/tukan)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An API may be used by several applications—for example, a web app and a mobile app. Each application needs to understand the same request and response data, often in a different programming language. Keeping those definitions in sync by hand takes time and can lead to mismatches.
+Written in [Odin](https://odin-lang.org/) as a single native binary with parallel generation, preflight validation, and safe failure isolation—broken specs never overwrite existing generated files.
 
-Tukan reads an OpenAPI specification—sometimes called a Swagger file—and generates TypeScript and Dart types from the same API description. This helps clients stay consistent without writing the types by hand.
+- **Tukan CLI** ([Releases](https://github.com/vladislav-yemelyanov/tukan/releases/latest)) — generates pure TypeScript types (`Schemas`) and standalone Dart models with compile-time `Paths` builders (`api.dart`) from one `tukan.json5` config. No runtime dependencies in generated code.
+- **TypeScript Client** ([npm](https://www.npmjs.com/package/tukan) · [docs](clients/ts/README.md)) — zero-dependency `fetch` client with end-to-end path, parameter, body, and status-error typing, non-throwing results, `AbortSignal`, timeouts, and hooks.
+- **Dart Client** ([pub.dev](https://pub.dev/packages/tukan) · [docs](clients/dart/README.md)) — zero-dependency `dart:io` client built for generated `Paths` trees, non-throwing sealed `ApiResult` / `ApiError`, `CancelToken`, hooks, and pluggable transports.
 
-## Quick start
-
-### Installation
-
-Install the latest release on **macOS or Linux** with one command:
+## Install
 
 ```sh
 curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash
 ```
 
-The installer selects your operating system and CPU, downloads the binary together with `VERSION` and `SHA256SUMS` from GitHub Releases, verifies the SHA-256 checksum and embedded version, and installs `tukan` into `~/.local/bin` without `sudo`. It checks that the binary runs before replacing an existing installation. If necessary, follow the printed instruction to add the directory to your shell's `PATH`, then check:
+Installs to `~/.local/bin` on **macOS (ARM64)** and **Linux (ARM64, x86-64)** with SHA-256 verification.
+
+<details>
+<summary>Install a specific version or custom directory</summary>
 
 ```sh
-tukan --version
+curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh \
+  | bash -s -- --version 0.4.0 --install-dir /path/to/bin
 ```
 
-To pin a specific release version or choose a custom install directory:
+> Executables use the system `libcurl` (preinstalled on macOS; install `libcurl` on Linux if missing).
 
-```sh
-curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash -s -- --version 0.4.0 --install-dir /path/to/bin
-```
+</details>
 
-To install from a locally built `dist/` bundle instead of downloading from GitHub:
+## Quick start
 
-```sh
-bash install.sh --dist-dir /path/to/dist --install-dir /path/to/bin
-```
-
-The project targets **macOS and Linux**. Builds target macOS ARM64 and Linux ARM64 and x86-64. Executables use the system libcurl library (preinstalled on macOS; install libcurl on Linux if missing).
-
-### Set up your project
-
-Use a project configuration as the main way to work with Tukan. Once the executable is available in your `PATH`, open your project's root directory and create it:
+1. Create `tukan.json5` in your project root:
 
 ```sh
 tukan init
 ```
 
-This creates a commented `tukan.json5` file and never overwrites an existing configuration. Add your specification paths or URLs and choose the output languages.
-
-### Generate types
-
-**Run `tukan` from your project root to generate types for every configured API:**
-
-```sh
-tukan
-```
-
-Tukan reads `tukan.json5`, loads each OpenAPI specification, and writes the selected TypeScript and Dart files to their configured directories. It prints a list of generated files and diagnostics tied to individual specifications, so you can see what was created and which API needs attention. Run the same command whenever a specification changes, locally or in CI.
-
-Keep `tukan.json5` in version control so teammates and CI use the same API sources and output paths. You can edit the file yourself or ask your AI assistant, for example: “Add the catalog API from this URL to the Tukan config and generate its types in `src/generated/catalog`.”
-
-One configuration can route each API to multiple apps and languages at once, with shared defaults and per-spec overrides:
+2. Add your OpenAPI specs and output targets to `tukan.json5`:
 
 ```json5
 {
@@ -90,11 +71,13 @@ One configuration can route each API to multiple apps and languages at once, wit
 }
 ```
 
-Paths are relative to the configuration file. Each specification is fetched and parsed once, then written in parallel to every configured target using `name` as the basename—generating `apps/web/src/generated/billing.ts` and `apps/mobile/lib/generated/billing.dart`, plus `catalog.ts` (for both `web` and `admin`) and `catalog.dart` (for `mobile`). Tukan creates output folders and replaces existing generated files for the selected languages.
+3. Generate types:
 
-Specifications and language generators run in parallel within the configured limit. Configuration errors and conflicting output paths stop the run before processing begins. A specification that fails to load or parse keeps its previous output while other specifications continue.
+```sh
+tukan
+```
 
-See the [configuration guide](docs/configuration.md) for all settings. For occasional runs without a project configuration, see the separate [CLI reference](docs/cli.md).
+Run `tukan` whenever a spec changes — locally or in CI. See the [configuration guide](docs/configuration.md) or [CLI reference](docs/cli.md) for direct one-off runs.
 
 ## Documentation
 
