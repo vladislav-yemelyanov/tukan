@@ -11,7 +11,7 @@ Fast OpenAPI 3.0 type generator and zero-dependency HTTP clients for **TypeScrip
 [![pub.dev](https://img.shields.io/pub/v/tukan?label=pub.dev)](https://pub.dev/packages/tukan)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Written in [Odin](https://odin-lang.org/) as a single native binary with parallel generation, preflight validation, and safe failure isolation—broken specs never overwrite existing generated files.
+Written in [Odin](https://odin-lang.org/) as a single native binary with parallel generation, preflight validation, and safe failure isolation—broken specs never overwrite existing generated files. While parsing, it checks schemas, `$ref` targets, and operation contracts, reporting structured errors and warnings with exact JSON Pointer paths instead of stopping at the first issue.
 
 - **Tukan CLI** ([Releases](https://github.com/vladislav-yemelyanov/tukan/releases/latest)) — generates pure TypeScript types (`Schemas`) and standalone Dart models with compile-time `Paths` builders (`api.dart`) from one `tukan.json5` config. No runtime dependencies in generated code.
 - **TypeScript Client** ([npm](https://www.npmjs.com/package/tukan) · [docs](clients/ts/README.md)) — zero-dependency `fetch` client with end-to-end path, parameter, body, and status-error typing, non-throwing results, `AbortSignal`, timeouts, and hooks.
