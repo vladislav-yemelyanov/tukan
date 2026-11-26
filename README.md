@@ -37,6 +37,14 @@ curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/downloa
 
 </details>
 
+To update an existing installation in place:
+
+```sh
+tukan upgrade
+# Or pin a specific release:
+tukan upgrade --version 0.5.0
+```
+
 ## Quick start
 
 1. Create `tukan.json5` in your project root:
@@ -96,6 +104,8 @@ Run `tukan` whenever a spec changes — locally or in CI. See the [configuration
 ## Parsing errors and warnings
 
 **A parsing error prevents all generation for that specification.** Other specifications continue. Tukan collects diagnostics and exits with code `1` if any specification fails, preserving existing generated files for inputs that fail reading or parsing.
+
+For unstable dev gateways, mark a spec `optional: true` in `tukan.json5` (or `defaults.optional: true`) so unavailable files or HTTP fetch errors emit warnings and keep existing outputs without failing the run; pass `tukan --strict` in CI to enforce every spec.
 
 Warnings about ignored or unsupported features are reported but allow generation to continue.
 

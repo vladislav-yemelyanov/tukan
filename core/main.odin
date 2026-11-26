@@ -63,15 +63,22 @@ curl_error_detail :: proc(err: curl.code, error_buffer: []u8) -> string {
 }
 
 @(private)
-set_curl_option :: proc(handle: ^curl.CURL, option: curl.option, value: $T, url: string, issues: ^diagnostics.Manager) -> bool {
+set_curl_option :: proc(handle: ^curl.CURL, option: curl.option, value: $T, url: string, error_title: string, issues: ^diagnostics.Manager) -> bool {
 	if err := curl.easy_setopt(handle, option, value); err != .E_OK {
-		diagnostics.add(issues, "Failed to fetch specification", fmt.aprintf("%s: %s", url, curl.easy_strerror(err)))
+		diagnostics.add(issues, error_title, fmt.aprintf("%s: %s", url, curl.easy_strerror(err)))
 		return false
 	}
 	return true
 }
 
-read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager) -> ([]byte, bool) {
+@(private)
+fetch_http_bytes :: proc(
+	url: string,
+	error_title: string,
+	issues: ^diagnostics.Manager,
+	severity := diagnostics.Severity.error,
+	timeout_seconds: c.long = 60,
+) -> ([]byte, bool) {
 	// The HTTP client does not strip fragments, which must never reach the server.
 	request_url := url
 	if index := strings.index_byte(request_url, '#'); index >= 0 {
@@ -80,7 +87,7 @@ read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager) -> ([]
 
 	handle := curl.easy_init()
 	if handle == nil {
-		diagnostics.add(issues, "Failed to fetch specification", fmt.aprintf("%s: failed to initialize HTTP handle", url))
+		diagnostics.add(issues, error_title, fmt.aprintf("%s: failed to initialize HTTP handle", url))
 		return nil, false
 	}
 	defer curl.easy_cleanup(handle)
@@ -92,16 +99,16 @@ read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager) -> ([]
 	error_buffer: [curl.ERROR_SIZE]u8
 
 	write_fn: curl.write_callback = curl_write_body
-	if !set_curl_option(handle, .URL, request_url_cstr, url, issues) ||
-	   !set_curl_option(handle, .WRITEFUNCTION, write_fn, url, issues) ||
-	   !set_curl_option(handle, .WRITEDATA, &response, url, issues) ||
-	   !set_curl_option(handle, .ERRORBUFFER, raw_data(error_buffer[:]), url, issues) ||
-	   !set_curl_option(handle, .FOLLOWLOCATION, c.long(1), url, issues) ||
-	   !set_curl_option(handle, .MAXREDIRS, c.long(10), url, issues) ||
-	   !set_curl_option(handle, .NOSIGNAL, c.long(1), url, issues) ||
-	   !set_curl_option(handle, .CONNECTTIMEOUT, c.long(15), url, issues) ||
-	   !set_curl_option(handle, .TIMEOUT, c.long(60), url, issues) ||
-	   !set_curl_option(handle, .ACCEPT_ENCODING, cstring(""), url, issues) {
+	if !set_curl_option(handle, .URL, request_url_cstr, url, error_title, issues) ||
+	   !set_curl_option(handle, .WRITEFUNCTION, write_fn, url, error_title, issues) ||
+	   !set_curl_option(handle, .WRITEDATA, &response, url, error_title, issues) ||
+	   !set_curl_option(handle, .ERRORBUFFER, raw_data(error_buffer[:]), url, error_title, issues) ||
+	   !set_curl_option(handle, .FOLLOWLOCATION, c.long(1), url, error_title, issues) ||
+	   !set_curl_option(handle, .MAXREDIRS, c.long(10), url, error_title, issues) ||
+	   !set_curl_option(handle, .NOSIGNAL, c.long(1), url, error_title, issues) ||
+	   !set_curl_option(handle, .CONNECTTIMEOUT, c.long(15), url, error_title, issues) ||
+	   !set_curl_option(handle, .TIMEOUT, timeout_seconds, url, error_title, issues) ||
+	   !set_curl_option(handle, .ACCEPT_ENCODING, cstring(""), url, error_title, issues) {
 		delete(response.body)
 		return nil, false
 	}
@@ -111,7 +118,7 @@ read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager) -> ([]
 		if response.alloc_failed {
 			diagnostics.add(issues, "Failed to read response body", fmt.aprintf("%s: out of memory", url))
 		} else {
-			diagnostics.add(issues, "Failed to fetch specification", fmt.aprintf("%s: %s", url, curl_error_detail(perform_err, error_buffer[:])))
+			diagnostics.add(issues, error_title, fmt.aprintf("%s: %s", url, curl_error_detail(perform_err, error_buffer[:])), severity = severity)
 		}
 		return nil, false
 	}
@@ -119,24 +126,28 @@ read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager) -> ([]
 	status_code: c.long
 	if info_err := curl.easy_getinfo(handle, .RESPONSE_CODE, &status_code); info_err != .E_OK {
 		delete(response.body)
-		diagnostics.add(issues, "Failed to fetch specification", fmt.aprintf("%s: %s", url, curl.easy_strerror(info_err)))
+		diagnostics.add(issues, error_title, fmt.aprintf("%s: %s", url, curl.easy_strerror(info_err)), severity = severity)
 		return nil, false
 	}
 
 	if status_code < 200 || status_code >= 300 {
 		delete(response.body)
-		diagnostics.add(issues, "Failed to fetch specification", fmt.aprintf("%s: HTTP %d", url, status_code))
+		diagnostics.add(issues, error_title, fmt.aprintf("%s: HTTP %d", url, status_code), severity = severity)
 		return nil, false
 	}
 
 	return response.body[:], true
 }
 
-read_spec_from_file :: proc(path: string, issues: ^diagnostics.Manager) -> ([]byte, bool) {
+read_spec_from_swagger :: proc(url: string, issues: ^diagnostics.Manager, severity := diagnostics.Severity.error) -> ([]byte, bool) {
+	return fetch_http_bytes(url, "Failed to fetch specification", issues, severity)
+}
+
+read_spec_from_file :: proc(path: string, issues: ^diagnostics.Manager, severity := diagnostics.Severity.error) -> ([]byte, bool) {
 	file, err := os.read_entire_file(path, context.allocator)
 
 	if err != nil {
-		diagnostics.add(issues, "Failed to read specification", fmt.aprintf("%s: %v", path, err))
+		diagnostics.add(issues, "Failed to read specification", fmt.aprintf("%s: %v", path, err), severity = severity)
 		return nil, false
 	}
 
@@ -165,6 +176,11 @@ run :: proc() -> int {
 	}
 	if len(args) == 1 && args[0] == "init" {
 		if create_config(&issues) { return 0 }
+		fmt.eprintf("Diagnostics\n\n%s", diagnostics.format(&issues))
+		return 1
+	}
+	if len(args) >= 1 && args[0] == "upgrade" {
+		if run_upgrade(args[1:], &issues) { return 0 }
 		fmt.eprintf("Diagnostics\n\n%s", diagnostics.format(&issues))
 		return 1
 	}

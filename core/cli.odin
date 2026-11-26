@@ -13,6 +13,7 @@ CliOptions :: struct {
 	languages: OutputLanguages,
 	concurrency: int,
 	direct: bool,
+	strict: bool,
 }
 
 parse_args :: proc(args: []string, issues: ^diagnostics.Manager) -> (options: CliOptions, valid: bool) {
@@ -20,6 +21,16 @@ parse_args :: proc(args: []string, issues: ^diagnostics.Manager) -> (options: Cl
 	index := 0
 	for index < len(args) {
 		argument := args[index]
+		if argument == "--strict" {
+			if seen["strict"] {
+				diagnostics.add(issues, "Option can only be specified once", argument)
+				return
+			}
+			seen["strict"] = true
+			options.strict = true
+			index += 1
+			continue
+		}
 		key: string
 		missing: string
 		switch argument {
@@ -92,6 +103,10 @@ parse_args :: proc(args: []string, issues: ^diagnostics.Manager) -> (options: Cl
 		return
 	}
 	options.direct = len(options.config) == 0 && (seen["input"] || seen["input list"] || seen["language"] || seen["output directory"])
+	if options.strict && options.direct {
+		diagnostics.add(issues, "Strict mode can only be used with a configuration file", "Use --config or run tukan --strict with tukan.json5")
+		return
+	}
 	if options.direct && options.languages == {} {
 		diagnostics.add(issues, "Missing required language option", "Use -l ts,dart for direct input, or run tukan with a configuration file")
 		return
@@ -100,11 +115,13 @@ parse_args :: proc(args: []string, issues: ^diagnostics.Manager) -> (options: Cl
 }
 
 print_help :: proc() {
-	fmt.println("Usage: tukan [--config file] | tukan init")
+	fmt.println("Usage: tukan [--config file] | tukan init | tukan upgrade [--version version]")
 	fmt.println("  -v, --version  Show the build version; used alone.")
 	fmt.println("  tukan init  Create tukan.json5 without replacing an existing file.")
+	fmt.println("  tukan upgrade [--version version]  Update Tukan to the latest or specified release.")
 	fmt.println("  tukan       Generate types using tukan.json5 in the current directory.")
 	fmt.println("  -c, --config  Use another configuration file.")
+	fmt.println("  --strict      Treat all specifications as required, ignoring optional: true.")
 	fmt.println("  -j, --concurrency  Maximum concurrent tasks, from 1 to 64. Default: 4.")
 	fmt.println("Direct usage: tukan -l languages [-i file-or-url | --input-list file] [-o directory]")
 	fmt.println("  -i, --input   Specification file or URL. Default for direct usage: spec.json.")

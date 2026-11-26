@@ -6,17 +6,20 @@ The recommended project workflow is `tukan init`, edit `tukan.json5`, then run `
 
 ```sh
 tukan init
+tukan upgrade
+tukan upgrade --version 0.5.0
 tukan
 tukan --config ./config/tukan.json5
 tukan --help
 tukan --version
 ```
 
-`init` creates `tukan.json5` in the current directory and refuses replacement. Plain `tukan` reads that file from the current directory. Missing configuration is an error with an instruction to run `tukan init`.
+`init` creates `tukan.json5` in the current directory and refuses replacement. `upgrade` downloads the latest GitHub release binary (or a specific `--version`) for the current platform, verifies its SHA-256 checksum and `--version` output, and atomically replaces the running executable, preserving the existing binary if any check fails or if the current version is already up to date. Plain `tukan` reads `tukan.json5` from the current directory. Missing configuration is an error with an instruction to run `tukan init`.
 
 | Option | Meaning |
 | --- | --- |
 | `-c`, `--config FILE` | Read an explicit configuration file. |
+| `--strict` | Treat all specifications as required, ignoring `optional: true` (works with `tukan.json5` or `--config`; cannot be combined with direct mode). |
 | `-j`, `--concurrency N` | Override the shared task limit, from 1 to 64. |
 | `-l`, `--lang LANGUAGES` | With an explicit `--config`, replace the language selection of every specification (when a spec uses `outputs`, filters targets to matching languages). |
 | `-o`, `--output DIRECTORY` | With an explicit `--config`, replace the output directory of every specification. `--out` is also accepted. |
@@ -86,6 +89,6 @@ Generated files (2)
 Total time: 125.400 ms
 ```
 
-`Total time` measures elapsed time from CLI startup through configuration, processing, reporting and task cleanup. It uses a monotonic clock and is shown in milliseconds. Help, version and `init` do not print it.
+`Total time` measures elapsed time from CLI startup through configuration, processing, reporting and task cleanup. It uses a monotonic clock and is shown in milliseconds. Help, version, `init`, and `upgrade` do not print it.
 
 Reports, file lists and timings go to stdout; diagnostics go to stderr. To retain their terminal order in one log, redirect both streams together, for example `tukan > run.log 2>&1`.

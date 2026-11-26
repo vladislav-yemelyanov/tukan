@@ -18,6 +18,7 @@ SpecJob :: struct {
 	issues: diagnostics.Manager,
 	result: parser.ParseResult,
 	parsed: bool,
+	skipped_optional: bool,
 	outputs: []OutputJob,
 }
 
@@ -37,15 +38,21 @@ process_spec :: proc(task: thread.Task) {
 	job.arena_ready = true
 	context.allocator = virtual.arena_allocator(&job.arena)
 
+	load_severity: diagnostics.Severity = .warning if job.options.optional else .error
 	source: []byte
 	read_ok: bool
 	input := job.options.input
 	if is_http_url(input) {
-		source, read_ok = read_spec_from_swagger(input, &job.issues)
+		source, read_ok = read_spec_from_swagger(input, &job.issues, load_severity)
 	} else {
-		source, read_ok = read_spec_from_file(input, &job.issues)
+		source, read_ok = read_spec_from_file(input, &job.issues, load_severity)
 	}
-	if !read_ok { return }
+	if !read_ok {
+		if job.options.optional && !diagnostics.has_errors(&job.issues) {
+			job.skipped_optional = true
+		}
+		return
+	}
 	defer delete(source)
 
 	{
@@ -120,6 +127,8 @@ process_specs :: proc(config: ^Config) -> bool {
 			stats := job.result.stats
 			fmt.printf("  📦 Schemas: %d parsed, %d failed\n", stats.schemas_parsed, stats.schemas_failed)
 			fmt.printf("  🔗 Operations: %d parsed, %d failed\n", stats.operations_parsed, stats.operations_failed)
+		} else if job.skipped_optional {
+			fmt.println("  ⚠️  Skipped optional specification: input could not be read; existing outputs preserved.")
 		} else {
 			fmt.println("  ⚠️  Could not count schemas or operations: specification was not read.")
 		}

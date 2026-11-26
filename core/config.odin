@@ -18,6 +18,7 @@ SpecOptions :: struct {
 	languages: OutputLanguages,
 	targets: [dynamic]OutputTarget,
 	explicit_outputs: bool,
+	optional: bool,
 }
 
 Config :: struct {
@@ -42,6 +43,7 @@ config_template :: `{
       // A local OpenAPI JSON file or an http:// or https:// URL.
       // Relative paths are resolved from this configuration file's directory.
       input: "./openapi.json",
+      // optional: true,
       // languages: ["ts", "dart"],
       // output: "./another/output",
       // Or target different directories per language with outputs:
@@ -172,6 +174,13 @@ read_spec_settings :: proc(source: json.Object, inherited: SpecOptions, issues: 
 			case "input": settings.input = string(text)
 			case "output": settings.output_dir = string(text)
 			}
+		case "optional":
+			flag, ok := value.(json.Boolean)
+			if !ok {
+				diagnostics.add(issues, "Expected a boolean", name, field_path)
+				continue
+			}
+			settings.optional = bool(flag)
 		case "languages":
 			if has_outputs { continue }
 			values, ok := value.(json.Array)
@@ -256,7 +265,7 @@ read_config :: proc(path: string, issues: ^diagnostics.Manager) -> (config: Conf
 		if !is_object {
 			diagnostics.add(issues, "Defaults must be an object", "", "#/defaults")
 		} else {
-			check_config_keys(settings, {"languages", "output", "outputs"}, issues, "#/defaults")
+			check_config_keys(settings, {"languages", "output", "outputs", "optional"}, issues, "#/defaults")
 			defaults = read_spec_settings(settings, defaults, issues, "#/defaults")
 		}
 	}
@@ -274,7 +283,7 @@ read_config :: proc(path: string, issues: ^diagnostics.Manager) -> (config: Conf
 			diagnostics.add(issues, "Specification settings must be an object", "", entry_path)
 			continue
 		}
-		check_config_keys(settings, {"name", "input", "output", "languages", "outputs"}, issues, entry_path)
+		check_config_keys(settings, {"name", "input", "output", "languages", "outputs", "optional"}, issues, entry_path)
 		spec := read_spec_settings(settings, defaults, issues, entry_path)
 		if len(spec.input) == 0 {
 			diagnostics.add(issues, "Specification input is required", "", diagnostics.child_path(entry_path, "input"))
@@ -310,6 +319,7 @@ prepare_config :: proc(options: CliOptions, issues: ^diagnostics.Manager) -> (co
 			override_dir = resolve_config_path(".", options.output_dir, issues)
 		}
 		for &spec in config.specs {
+			if options.strict { spec.optional = false }
 			if options.languages != {} && len(override_dir) > 0 {
 				clear(&spec.targets)
 				append_language_targets(&spec.targets, options.languages, override_dir)

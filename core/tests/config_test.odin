@@ -137,6 +137,9 @@ config_rejects_invalid_settings_before_processing_any_specification :: proc(t: ^
 		{`{defaults: {outputs: [{language: "ts", path: "./a"}], output: "./b"}, specs: [{input: "missing.json"}]}`, "#/defaults/outputs"},
 		{`{specs: [{input: "missing.json", outputs: [{language: "ts", path: "./a"}], languages: ["ts"]}]}`, "#/specs/0/outputs"},
 		{`{specs: [{input: "a.json", name: "api", outputs: [{language: "ts", path: "./a"}, {language: "ts", path: "./a/../a"}]}]}`, "Conflicting output path"},
+		{`{defaults: {optional: "yes"}, specs: [{input: "missing.json"}]}`, "#/defaults/optional"},
+		{`{specs: [{input: "missing.json", optional: 1}]}`, "#/specs/0/optional"},
+		{`{specs: [{input: "missing.json", optional: null}]}`, "#/specs/0/optional"},
 	}
 	path := fmt.aprintf("%s/tukan.json5", work.dir)
 	for scenario in cases {
@@ -416,4 +419,101 @@ config_supports_multi_output_targets_in_defaults_and_specs :: proc(t: ^testing.T
 	if !testing.expectf(t, override_err == nil && override_state.exit_code == 0, "override multi-output should succeed: %s", string(override_stderr)) { return }
 	testing.expect(t, os.exists(fmt.aprintf("%s/override-all/auth.ts", work.dir)), "override ts output should exist")
 	testing.expect(t, os.exists(fmt.aprintf("%s/override-all/auth.dart", work.dir)), "override dart output should exist")
+}
+
+@(test)
+config_optional_specs_warn_on_load_failure_and_respect_inheritance_and_strict :: proc(t: ^testing.T) {
+	arena: virtual.Arena
+	err := virtual.arena_init_growing(&arena)
+	if !testing.expect(t, err == nil, "test arena should initialize") { return }
+	defer virtual.arena_destroy(&arena)
+	context.allocator = virtual.arena_allocator(&arena)
+
+	work, ready := make_test_workspace(t)
+	if !ready { return }
+	defer os.remove_all(work.dir)
+
+	output := fmt.aprintf("%s/output", work.dir)
+	if !testing.expect(t, os.make_directory(output) == nil, "output directory should exist") { return }
+	for name in ([3]string{"missing", "malformed", "invalid"}) {
+		for extension in ([2]string{"ts", "dart"}) {
+			if !testing.expect(t, os.write_entire_file(fmt.aprintf("%s/%s.%s", output, name, extension), "previous output") == nil, "previous output should be written") { return }
+		}
+	}
+
+	valid_source := fmt.aprintf("%s/core/tests/fixtures/specs/valid-schemas.json", work.root)
+	config := `{
+		defaults: {languages: ["ts", "dart"], output: "./output", optional: true},
+		specs: [
+			{name: "missing", input: "./does-not-exist.json"},
+			{name: "inherited_valid", input: VALID_SOURCE},
+			{name: "required_valid", input: VALID_SOURCE, optional: false},
+		],
+	}`
+	config, _ = strings.replace_all(config, "VALID_SOURCE", fmt.aprintf("%q", valid_source))
+	if !testing.expect(t, os.write_entire_file(fmt.aprintf("%s/tukan.json5", work.dir), config) == nil, "optional config should be written") { return }
+
+	state, stdout, stderr, run_err := run_cli(work, {})
+	testing.expectf(t, run_err == nil && state.exit_code == 0, "optional missing spec should not fail run: %s", string(stderr))
+	testing.expectf(t, strings.contains(string(stdout), "Skipped optional specification"), "stdout should explain skipped optional spec: %s", string(stdout))
+	testing.expectf(t, strings.contains(string(stdout), "\nGenerated files (4)\n"), "only required/available outputs should be generated: %s", string(stdout))
+	testing.expectf(t, !strings.contains(string(stdout), fmt.aprintf("%s/missing.", output)), "skipped optional spec should not be listed in Generated files: %s", string(stdout))
+	testing.expectf(t, strings.contains(string(stderr), "warning: Failed to read specification"), "missing optional spec should emit a warning: %s", string(stderr))
+	testing.expectf(t, !strings.contains(string(stderr), "error:"), "optional load failure must not emit error: %s", string(stderr))
+
+	for extension in ([2]string{"ts", "dart"}) {
+		for name in ([2]string{"inherited_valid", "required_valid"}) {
+			testing.expectf(t, os.exists(fmt.aprintf("%s/%s.%s", output, name, extension)), "%s.%s should be generated", name, extension)
+		}
+		previous, read_err := os.read_entire_file(fmt.aprintf("%s/missing.%s", output, extension), context.allocator)
+		if testing.expectf(t, read_err == nil, "missing.%s should remain readable", extension) {
+			testing.expect_value(t, string(previous), "previous output")
+		}
+	}
+
+	strict_state, _, strict_stderr, strict_err := run_cli(work, {"--strict"})
+	testing.expectf(t, strict_err == nil && strict_state.exit_code == 1, "--strict should fail on missing optional spec: %s", string(strict_stderr))
+	testing.expectf(t, strings.contains(string(strict_stderr), "error: Failed to read specification"), "--strict should emit an error: %s", string(strict_stderr))
+	for extension in ([2]string{"ts", "dart"}) {
+		previous, read_err := os.read_entire_file(fmt.aprintf("%s/missing.%s", output, extension), context.allocator)
+		if testing.expectf(t, read_err == nil, "missing.%s should remain readable after --strict", extension) {
+			testing.expect_value(t, string(previous), "previous output")
+		}
+	}
+
+	// Explicit optional: false overrides defaults.optional: true even without --strict.
+	override_config := `{
+		defaults: {languages: ["ts", "dart"], output: "./output", optional: true},
+		specs: [
+			{name: "missing", input: "./does-not-exist.json", optional: false},
+			{name: "valid", input: VALID_SOURCE},
+		],
+	}`
+	override_config, _ = strings.replace_all(override_config, "VALID_SOURCE", fmt.aprintf("%q", valid_source))
+	if !testing.expect(t, os.write_entire_file(fmt.aprintf("%s/tukan.json5", work.dir), override_config) == nil, "override config should be written") { return }
+
+	override_state, _, override_stderr, override_err := run_cli(work, {})
+	testing.expectf(t, override_err == nil && override_state.exit_code == 1, "optional: false should override defaults.optional: %s", string(override_stderr))
+	testing.expectf(t, strings.contains(string(override_stderr), "error: Failed to read specification"), "optional: false should emit error: %s", string(override_stderr))
+
+	// Invalid JSON and invalid OpenAPI schemas must still fail even when optional: true.
+	parse_fail_cases := [?]struct { name, input_file, expected: string }{
+		{"malformed", fmt.aprintf("%s/core/tests/fixtures/specs/invalid-json.json", work.root), "Failed to parse specification JSON"},
+		{"invalid", fmt.aprintf("%s/core/tests/fixtures/specs/invalid-spec.json", work.root), "error:"},
+	}
+	for scenario in parse_fail_cases {
+		cfg := `{defaults: {languages: ["ts", "dart"], output: "./output"}, specs: [{name: SPEC_NAME, input: SPEC_INPUT, optional: true}]}`
+		cfg, _ = strings.replace_all(cfg, "SPEC_NAME", fmt.aprintf("%q", scenario.name))
+		cfg, _ = strings.replace_all(cfg, "SPEC_INPUT", fmt.aprintf("%q", scenario.input_file))
+		if !testing.expect(t, os.write_entire_file(fmt.aprintf("%s/tukan.json5", work.dir), cfg) == nil, "parse-fail optional config should be written") { return }
+		fail_state, _, fail_stderr, fail_err := run_cli(work, {})
+		testing.expectf(t, fail_err == nil && fail_state.exit_code == 1, "%s: decode/parse error must still fail when optional: true: %s", scenario.name, string(fail_stderr))
+		testing.expectf(t, strings.contains(string(fail_stderr), scenario.expected), "%s: expected %s in stderr: %s", scenario.name, scenario.expected, string(fail_stderr))
+		for extension in ([2]string{"ts", "dart"}) {
+			previous, read_err := os.read_entire_file(fmt.aprintf("%s/%s.%s", output, scenario.name, extension), context.allocator)
+			if testing.expectf(t, read_err == nil, "%s.%s should remain readable", scenario.name, extension) {
+				testing.expect_value(t, string(previous), "previous output")
+			}
+		}
+	}
 }

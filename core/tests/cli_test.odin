@@ -149,6 +149,9 @@ cli_rejects_invalid_arguments :: proc(t: ^testing.T) {
 		{"duplicate output", {"-o", "a", "-o", "b"}, "Output directory can only be specified once"},
 		{"unknown option", {"--unknown"}, "Unknown option"},
 		{"option instead of input", {"-i", "-l", "ts"}, "Missing input file or URL"},
+		{"repeated strict", {"--strict", "--strict"}, "Option can only be specified once"},
+		{"strict with direct input", {"--strict", "-l", "ts", "-i", "a.json"}, "Strict mode can only be used with a configuration file"},
+		{"strict with direct language", {"--strict", "-l", "ts"}, "Strict mode can only be used with a configuration file"},
 	}
 
 	for scenario in cases {
@@ -181,7 +184,8 @@ cli_describes_options_in_help :: proc(t: ^testing.T) {
 		testing.expect(t, strings.contains(string(stdout), "tukan -l languages"), "usage should show language as required")
 		testing.expect(t, strings.contains(string(stdout), "Required output languages"), "help should explain that language selection is required")
 
-		for option in ([3]string{"-i, --input", "-l, --lang", "-o, --output"}) {
+		testing.expect(t, strings.contains(string(stdout), "tukan upgrade [--version version]"), "help should describe upgrade command")
+		for option in ([4]string{"-i, --input", "-l, --lang", "-o, --output", "--strict"}) {
 			testing.expectf(t, strings.contains(string(stdout), option), "help should describe %s", option)
 		}
 	}
