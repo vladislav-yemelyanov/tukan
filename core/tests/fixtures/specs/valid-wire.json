@@ -1,0 +1,35 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Wire contracts", "version": "1"},
+  "paths": {
+    "/api/v1/card/activate": {"post": {
+      "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Patch"}}}},
+      "responses": {"204": {"description": "Done"}}
+    }},
+    "/api/v2/card/activate": {"post": {
+      "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/Patch"}}}},
+      "responses": {"204": {"description": "Done"}}
+    }}
+  },
+  "components": {"schemas": {
+    "Patch": {
+      "type": "object", "required": ["id", "note"], "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "maxLength": 8, "pattern": "^[a-z]+$"},
+        "note": {"type": "string", "nullable": true},
+        "name": {"type": "string", "nullable": true},
+        "enabled": {"type": "boolean"},
+        "amount": {"type": "number", "format": "decimal", "minimum": 0, "maximum": 100},
+        "labels": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "state": {"$ref": "#/components/schemas/State"}
+      }
+    },
+    "State": {"type": "string", "enum": ["ready", "in-progress", "in progress", "name"]},
+    "Node": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"value": {"type": "string"}, "json": {"type": "string"}, "toJson": {"type": "string"}, "children": {"type": "array", "items": {"$ref": "#/components/schemas/Node"}}}
+    },
+    "Error": {"type": "object", "properties": {"message": {"type": "string", "nullable": true}}, "additionalProperties": {}},
+    "TukanJson": {"type": "string"}
+  }}
+}

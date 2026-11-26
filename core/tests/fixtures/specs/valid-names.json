@@ -1,0 +1,50 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Escaped identifiers and values",
+    "version": "1"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "class": {
+        "type": "object",
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "type": "string"
+          },
+          "quote\"name": {
+            "type": "string"
+          },
+          "line\nbreak": {
+            "type": "string"
+          },
+          "dollar$value": {
+            "type": "string"
+          },
+          "ключ": {
+            "type": "string"
+          }
+        }
+      },
+      "A/B~C": {
+        "$ref": "#/components/schemas/class"
+      },
+      "ключ": {
+        "type": "string"
+      },
+      "Text": {
+        "type": "string",
+        "enum": [
+          "quote\"value",
+          "line\nbreak",
+          "$value",
+          "ключ"
+        ]
+      }
+    }
+  }
+}

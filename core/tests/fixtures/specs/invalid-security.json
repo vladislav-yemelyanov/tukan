@@ -1,0 +1,11 @@
+{
+  "openapi": "3.0.3",
+  "paths": {
+    "/users": {
+      "get": {
+        "security": [{ "Missing": [] }],
+        "responses": { "204": { "description": "OK" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  concurrency: 4,
+
+  defaults: {
+    outputs: [
+      { language: "ts", path: "./nextjs-app/src/generated" },
+      { language: "dart", path: "./flutter-app/lib/generated" },
+    ],
+  },
+
+  specs: [
+    { name: "todos", input: "http://localhost:4000/openapi/todos.json" },
+  ],
+}

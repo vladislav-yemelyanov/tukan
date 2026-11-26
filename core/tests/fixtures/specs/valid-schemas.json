@@ -1,0 +1,26 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Schema variants", "version": "1.0.0" },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "User": {
+        "type": "object",
+        "required": ["id", "role"],
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string", "nullable": true },
+          "role": { "$ref": "#/components/schemas/Role" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "photo": { "type": "string", "format": "binary" }
+        },
+        "additionalProperties": false
+      },
+      "Role": { "type": "string", "enum": ["admin", "member"] },
+      "Priority": { "type": "integer", "enum": [1, 2, 3] },
+      "Enabled": { "type": "boolean", "enum": [true, false] },
+      "Users": { "type": "array", "items": { "$ref": "#/components/schemas/User" } },
+      "Scores": { "type": "object", "additionalProperties": { "type": "number" } }
+    }
+  }
+}

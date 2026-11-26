@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Invalid reference examples",
+    "version": "1.0.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "properties": {
+          "customer": { "$ref": "#/components/schemas/MissingCustomer" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/MissingItem" }
+          },
+          "shipping": { "$ref": "#/components/schemas/Invalid~2Escape" },
+          "external": { "$ref": "https://example.com/schemas.json#/Address" }
+        }
+      }
+    }
+  }
+}

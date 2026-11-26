@@ -1,0 +1,44 @@
+FROM debian:bookworm-slim
+
+ARG TARGETARCH
+ENV ODIN_VERSION=dev-2026-11
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates clang curl libcurl4-openssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Verify the official compiler archive for each supported architecture.
+RUN case "$TARGETARCH" in \
+      amd64) checksum=65c9f6e97d6f8a30930e151f270ce5aeaa98fe8b2ba49fe067394e2af04f7618 ;; \
+      arm64) checksum=5bdba22447ea46a99765235e401c2ad83930f967f987aab1531ed76c3aa7ea3b ;; \
+      *) echo "Unsupported architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+    && curl -fsSL "https://github.com/odin-lang/Odin/releases/download/${ODIN_VERSION}/odin-linux-${TARGETARCH}-${ODIN_VERSION}.tar.gz" -o /tmp/odin.tar.gz \
+    && echo "$checksum  /tmp/odin.tar.gz" | sha256sum -c - \
+    && mkdir /opt/odin \
+    && tar -xzf /tmp/odin.tar.gz -C /opt/odin --strip-components=1 \
+    && rm /tmp/odin.tar.gz
+
+ENV PATH="/opt/odin:${PATH}"
+WORKDIR /work
+COPY core ./core
+COPY test-specs ./test-specs
+COPY VERSION ./VERSION
+
+ARG TUKAN_VERSION
+ARG BUILDARCH
+# Avoid concurrent subprocess launches under CPU emulation; CLI scenarios still test concurrency.
+RUN odin version \
+    && mkdir -p /output \
+    && odin build core -o:speed "-define:TUKAN_VERSION=${TUKAN_VERSION:-$(cat VERSION)}" -out:/output/tukan \
+    && export TUKAN_TEST_BINARY=/output/tukan \
+    && odin test core/openapi \
+    && odin test core/parser/schemas \
+    && odin test core/parser \
+    && odin test core/generators \
+    && odin test core/diagnostics \
+    && if [ "$TARGETARCH" = "$BUILDARCH" ]; then \
+         odin test core/tests; \
+       else \
+         odin test core/tests -define:ODIN_TEST_THREADS=1; \
+       fi

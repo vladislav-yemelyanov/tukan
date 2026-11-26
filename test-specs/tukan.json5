@@ -1,0 +1,14 @@
+{
+  // A mixed run intentionally exits with 1, but still generates billing and catalog.
+  concurrency: 4,
+  defaults: {
+    languages: ["ts", "dart"],
+    output: "../tukan-output",
+  },
+  specs: [
+    { name: "billing", input: "./billing.json" },
+    { name: "catalog", input: "./catalog.json" },
+    { name: "identity", input: "./identity.json" },
+    { name: "fulfillment", input: "./fulfillment.json" },
+  ],
+}

@@ -1,0 +1,145 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Readable names and collision handling",
+    "version": "1"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Order": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "expand": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          },
+          "shipping": {
+            "type": "object",
+            "properties": {
+              "postal-code": {
+                "type": "string"
+              },
+              "postalCode": {
+                "type": "string"
+              },
+              "i": {
+                "type": "string"
+              },
+              "ı": {
+                "type": "string"
+              },
+              "X": {
+                "type": "string"
+              },
+              "x": {
+                "type": "string"
+              }
+            }
+          },
+          "a-b": {
+            "type": "string"
+          },
+          "a/b": {
+            "type": "string"
+          },
+          "aB": {
+            "type": "string"
+          },
+          "generated_Value": {
+            "type": "string"
+          },
+          "generatedValue": {
+            "type": "string"
+          },
+          "GetType": {
+            "type": "string"
+          },
+          "getType": {
+            "type": "string"
+          }
+        }
+      },
+      "OrderStatus": {
+        "type": "string"
+      },
+      "OrderStatus2": {
+        "type": "string"
+      },
+      "OrderExpandItem": {
+        "type": "string"
+      },
+      "OrderShipping": {
+        "type": "string"
+      },
+      "AB": {
+        "type": "string"
+      },
+      "a-b": {
+        "type": "string"
+      },
+      "a/b": {
+        "$ref": "#/components/schemas/a-b"
+      },
+      "OptionalValue": {
+        "type": "string"
+      },
+      "OptionalValue2": {
+        "type": "string"
+      },
+      "Maybe": {
+        "type": "object",
+        "properties": {
+          "MaybeValue2": {
+            "type": "string"
+          }
+        },
+        "nullable": true
+      },
+      "MaybeValue": {
+        "type": "string"
+      },
+      "value": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ]
+      },
+      "value0": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ]
+      },
+      "generated_value0": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ]
+      },
+      "generated_Values": {
+        "type": "string",
+        "enum": [
+          "open",
+          "closed"
+        ]
+      }
+    }
+  }
+}

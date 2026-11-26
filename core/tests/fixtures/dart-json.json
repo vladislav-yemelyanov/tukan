@@ -1,0 +1,78 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "edge",
+    "version": "1"
+  },
+  "components": {
+    "schemas": {
+      "Widget": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string"
+          },
+          "toJson": {
+            "type": "string"
+          },
+          "obj": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "Inner": {
+                "type": "string"
+              },
+              "flag": {
+                "type": "boolean",
+                "nullable": true
+              }
+            }
+          },
+          "byName": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "with-dash",
+              "with dash",
+              "name",
+              "toString"
+            ]
+          },
+          "cost$usd": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "Empty": {
+        "type": "object"
+      },
+      "Required": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {}
+}

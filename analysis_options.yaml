@@ -1,0 +1,5 @@
+# Exclude OpenAPI generator consumer templates and intentional negative Dart fixtures.
+# scripts/check-generated.sh copies them into test-artifacts/ alongside generated specs before running dart analyze.
+analyzer:
+  exclude:
+    - core/tests/consumers/**

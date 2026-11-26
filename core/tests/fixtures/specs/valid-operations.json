@@ -1,0 +1,48 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Operation variants", "version": "1.0.0" },
+  "paths": {
+    "/documents/{id}": {
+      "parameters": [{ "$ref": "#/components/parameters/DocumentId" }],
+      "get": {
+        "operationId": "getDocument",
+        "parameters": [
+          { "name": "includeContent", "in": "query", "schema": { "type": "boolean" } },
+          { "name": "id", "in": "header", "schema": { "type": "string" } },
+          { "name": "id", "in": "cookie", "schema": { "type": "boolean" } }
+        ],
+        "responses": {
+          "200": { "description": "Document", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Document" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "operationId": "uploadDocument",
+        "requestBody": { "$ref": "#/components/requestBodies/Upload" },
+        "responses": { "204": { "description": "Uploaded" }, "404": { "$ref": "#/components/responses/NotFound" } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Document": { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
+      "Problem": { "type": "object", "required": ["message"], "properties": { "message": { "type": "string" } } },
+      "Upload": { "type": "object", "required": ["file"], "properties": { "file": { "type": "string", "format": "binary" } } }
+    },
+    "parameters": {
+      "DocumentId": { "$ref": "#/components/parameters/DocumentIdAlias" },
+      "DocumentIdAlias": { "$ref": "#/components/parameters/DocumentIdValue" },
+      "DocumentIdValue": { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+    },
+    "requestBodies": {
+      "Upload": { "$ref": "#/components/requestBodies/UploadAlias" },
+      "UploadAlias": { "$ref": "#/components/requestBodies/UploadValue" },
+      "UploadValue": { "required": true, "content": { "multipart/form-data": { "schema": { "$ref": "#/components/schemas/Upload" } } } }
+    },
+    "responses": {
+      "NotFound": { "$ref": "#/components/responses/NotFoundAlias" },
+      "NotFoundAlias": { "$ref": "#/components/responses/NotFoundValue" },
+      "NotFoundValue": { "description": "Not found", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Problem" } } } }
+    }
+  }
+}

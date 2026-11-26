@@ -1,0 +1,144 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Security metadata",
+    "version": "1"
+  },
+  "tags": [
+    {
+      "name": "Users"
+    }
+  ],
+  "security": [
+    {
+      "Bearer": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Token \"quoted\" \\ $value\nnext\u2028line",
+        "x-owner": "team"
+      },
+      "Key": {
+        "type": "apiKey",
+        "name": "X-API-Key",
+        "in": "header"
+      },
+      "OAuth": {
+        "type": "oauth2",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://example.com/token",
+            "scopes": {
+              "read:user": "Read user",
+              "write:user": "Write user"
+            }
+          }
+        }
+      },
+      "OIDC": {
+        "type": "openIdConnect",
+        "openIdConnectUrl": "https://example.com/.well-known/openid-configuration"
+      },
+      "Alias": {
+        "$ref": "#/components/securitySchemes/Bearer"
+      }
+    },
+    "schemas": {
+      "TukanMetadata": {
+        "type": "string"
+      }
+    }
+  },
+  "paths": {
+    "/inherited": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/public": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        },
+        "security": []
+      }
+    },
+    "/optional": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {},
+          {
+            "OAuth": [
+              "read:user"
+            ]
+          }
+        ]
+      }
+    },
+    "/combined": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Bearer": [],
+            "Key": []
+          },
+          {
+            "OAuth": [
+              "write:user"
+            ]
+          }
+        ]
+      }
+    },
+    "/override": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "Alias": []
+          }
+        ]
+      }
+    }
+  }
+}

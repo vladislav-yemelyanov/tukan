@@ -1,0 +1,9 @@
+**
+!core/
+!core/**
+!test-specs/
+!test-specs/**
+!VERSION
+core/deps/odin-http/.git
+core/deps/odin-http/.github
+core/deps/odin-http/openssl/includes/windows

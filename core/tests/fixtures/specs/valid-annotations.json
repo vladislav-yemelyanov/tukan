@@ -1,0 +1,134 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Annotations",
+    "version": "1"
+  },
+  "components": {
+    "schemas": {
+      "Input": {
+        "type": "object",
+        "properties": {
+          "currency-id": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "default": "USD",
+            "description": "Currency identifier."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "default": 0
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          },
+          "empty": {
+            "type": "string",
+            "default": ""
+          },
+          "nullable": {
+            "type": "string",
+            "nullable": true,
+            "default": null
+          },
+          "unsafe": {
+            "type": "string",
+            "default": "*/ /* <tag> & $value\nnext line",
+            "description": "Text */ /* <tag> &\nsecond line third line"
+          },
+          "nested": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[a-z]+$",
+                "minLength": 1
+              }
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "extra": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 4
+            }
+          }
+        },
+        "description": "Input payload."
+      },
+      "Limit": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 20
+      },
+      "TukanMetadata": {
+        "type": "string"
+      }
+    }
+  },
+  "paths": {
+    "/upload": {
+      "post": {
+        "operationId": "upload",
+        "parameters": [
+          {
+            "name": "page-size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Input"
+              },
+              "encoding": {
+                "currency-id": {
+                  "contentType": "text/plain",
+                  "style": "form",
+                  "explode": true,
+                  "headers": {
+                    "X-Part": {
+                      "schema": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Input"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "OK"
+          }
+        },
+        "summary": "Upload input",
+        "description": "Uploads the supplied input."
+      }
+    }
+  }
+}

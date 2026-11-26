@@ -1,0 +1,12 @@
+name: tukan
+version: 0.1.0
+description: Zero-dependency typed HTTP client for Tukan-generated Dart OpenAPI models.
+topics:
+  - http
+  - openapi
+  - client
+  - codegen
+  - api
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
