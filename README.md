@@ -7,7 +7,6 @@
 Generate TypeScript and Dart types from OpenAPI.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![CI](https://github.com/vladislav-yemelyanov/tukan/actions/workflows/ci.yml/badge.svg)](https://github.com/vladislav-yemelyanov/tukan/actions/workflows/ci.yml)
 
 An API may be used by several applications—for example, a web app and a mobile app. Each application needs to understand the same request and response data, often in a different programming language. Keeping those definitions in sync by hand takes time and can lead to mismatches.
 
@@ -32,7 +31,7 @@ tukan --version
 To pin a specific release version or choose a custom install directory:
 
 ```sh
-curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash -s -- --version 0.3.0 --install-dir /path/to/bin
+curl -fsSL https://github.com/vladislav-yemelyanov/tukan/releases/latest/download/install.sh | bash -s -- --version 0.4.0 --install-dir /path/to/bin
 ```
 
 To install from a locally built `dist/` bundle instead of downloading from GitHub:

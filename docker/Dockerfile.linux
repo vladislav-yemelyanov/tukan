@@ -4,7 +4,7 @@ ARG TARGETARCH
 ENV ODIN_VERSION=dev-2026-11
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates clang curl libcurl4-openssl-dev \
+    && apt-get install -y --no-install-recommends ca-certificates clang curl libcurl4-openssl-dev zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Verify the official compiler archive for each supported architecture.
