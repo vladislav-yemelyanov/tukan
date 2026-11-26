@@ -1,9 +1,18 @@
 {
   "name": "tukan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Zero-dependency, schema-typed fetch HTTP client for Tukan-generated TypeScript OpenAPI types.",
   "license": "MIT",
   "author": "Vladislav Yemelyanov",
+  "homepage": "https://github.com/vladislav-yemelyanov/tukan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vladislav-yemelyanov/tukan.git",
+    "directory": "clients/ts"
+  },
+  "bugs": {
+    "url": "https://github.com/vladislav-yemelyanov/tukan/issues"
+  },
   "keywords": [
     "tukan",
     "openapi",

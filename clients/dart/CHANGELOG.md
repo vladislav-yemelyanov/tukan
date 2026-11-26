@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Rewrite README with a concise quick start, Tukan logo, package badges, and support section.
+- Add GitHub repository, homepage, and issue tracker metadata to `pubspec.yaml`.
+
 ## 0.1.0
 
 - Initial public release of `tukan`.

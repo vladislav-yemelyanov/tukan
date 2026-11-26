@@ -1,6 +1,9 @@
 name: tukan
-version: 0.1.0
+version: 0.1.1
 description: Zero-dependency typed HTTP client for Tukan-generated Dart OpenAPI models.
+homepage: https://github.com/vladislav-yemelyanov/tukan
+repository: https://github.com/vladislav-yemelyanov/tukan/tree/main/clients/dart
+issue_tracker: https://github.com/vladislav-yemelyanov/tukan/issues
 topics:
   - http
   - openapi
